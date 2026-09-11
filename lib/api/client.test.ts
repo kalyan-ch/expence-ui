@@ -91,4 +91,22 @@ describe('apiFetch', () => {
     expect(error.status).toBe(409);
     expect(error.message).toBe("Account 'Checking' has 42 transactions");
   });
+  it('preserves headers given as a Headers instance', async () => {
+    fetchMock.mockReturnValue(response('{}', { status: 200 }));
+
+    await apiFetch('/accounts', { headers: new Headers({ 'X-Trace': 'abc' }) });
+
+    const sent = fetchMock.mock.calls[0][1].headers as Headers;
+    expect(sent.get('X-Trace')).toBe('abc');
+    expect(sent.get('Content-Type')).toBe('application/json');
+  });
+
+  it('leaves Content-Type unset for a FormData body so fetch sets the multipart boundary', async () => {
+    fetchMock.mockReturnValue(response('{}', { status: 200 }));
+
+    await apiFetch('/transactions/import', { method: 'POST', body: new FormData() });
+
+    const sent = fetchMock.mock.calls[0][1].headers as Headers;
+    expect(sent.has('Content-Type')).toBe(false);
+  });
 });
