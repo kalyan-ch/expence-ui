@@ -17,6 +17,12 @@ export const accountsFixture = [
   { id: 'a1', name: 'Checking', type: 'CHECKING' as const, openingBalance: 100, balance: 58 },
 ];
 
+export const categoriesFixture = [
+  { id: 'c1', name: 'Groceries', kind: 'EXPENSE' as const, isDefault: true },
+  { id: 'c2', name: 'Salary', kind: 'INCOME' as const, isDefault: true },
+  { id: 'c3', name: 'Pets', kind: 'EXPENSE' as const, isDefault: false },
+];
+
 export const summaryFixture = {
   month: '2026-09',
   totalBalance: 58,
@@ -36,6 +42,10 @@ export const handlers = [
     }),
   ),
   http.get('*/api/accounts', () => HttpResponse.json(accountsFixture)),
+  http.get('*/api/categories', ({ request }) => {
+    const kind = new URL(request.url).searchParams.get('kind');
+    return HttpResponse.json(kind ? categoriesFixture.filter((c) => c.kind === kind) : categoriesFixture);
+  }),
   http.get('*/api/reports/summary', () => HttpResponse.json(summaryFixture)),
   http.post('*/api/transactions', async ({ request }) => {
     const body = (await request.json()) as Record<string, unknown>;
