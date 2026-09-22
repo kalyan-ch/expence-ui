@@ -1,7 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Modal } from '../../components/Modal';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { EmptyState } from '../../components/EmptyState';
+import { ErrorBanner } from '../../components/ErrorBanner';
+import { MoneyText } from '../../components/MoneyText';
+import { PageHeader } from '../../components/PageHeader';
 import { ApiError } from '../../lib/api/client';
 import {
   useAccounts,
@@ -9,7 +13,6 @@ import {
   useDeleteAccount,
   useUpdateAccount,
 } from '../../lib/hooks/useAccounts';
-import { formatMoney } from '../../lib/format';
 import type { Account } from '../../lib/types';
 import { AccountDialog } from './AccountDialog';
 
@@ -36,26 +39,28 @@ export default function AccountsPage() {
 
   return (
     <section>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Accounts</h1>
-        <button
-          onClick={() => setDialog({})}
-          className="rounded bg-black px-3 py-2 text-sm text-white dark:bg-white dark:text-black"
-        >
-          New account
-        </button>
-      </div>
+      <PageHeader
+        title="Accounts"
+        action={
+          <button
+            onClick={() => setDialog({})}
+            className="rounded bg-black px-3 py-2 text-sm text-white dark:bg-white dark:text-black"
+          >
+            New account
+          </button>
+        }
+      />
 
       {error && (
-        <p role="alert" className="mb-4 rounded bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error.message}
-        </p>
+        <div className="mb-4">
+          <ErrorBanner error={error} />
+        </div>
       )}
 
       {isPending ? (
         <p className="text-sm opacity-70">Loading…</p>
       ) : !accounts?.length ? (
-        <p className="text-sm opacity-70">No accounts yet. Create one to get started.</p>
+        <EmptyState message="No accounts yet. Create one to get started." />
       ) : (
         <table className="w-full text-sm">
           <thead className="border-b border-black/10 text-left dark:border-white/15">
@@ -72,8 +77,12 @@ export default function AccountsPage() {
               <tr key={a.id} className="border-b border-black/5 dark:border-white/10">
                 <td className="py-2">{a.name}</td>
                 <td className="py-2">{a.type.replace('_', ' ')}</td>
-                <td className="py-2 text-right tabular-nums">{formatMoney(a.openingBalance)}</td>
-                <td className="py-2 text-right tabular-nums">{formatMoney(a.balance)}</td>
+                <td className="py-2 text-right">
+                  <MoneyText value={a.openingBalance} />
+                </td>
+                <td className="py-2 text-right">
+                  <MoneyText value={a.balance} />
+                </td>
                 <td className="py-2 text-right">
                   <button
                     onClick={() => setDialog({ account: a })}
@@ -112,26 +121,14 @@ export default function AccountsPage() {
       )}
 
       {confirm && (
-        <Modal title="Delete account" onClose={() => setConfirm(null)}>
-          <p className="text-sm">Delete “{confirm.name}”? This cannot be undone.</p>
-          {deleteError && (
-            <p role="alert" className="mt-3 rounded bg-red-50 px-3 py-2 text-sm text-red-700">
-              {deleteError}
-            </p>
-          )}
-          <div className="mt-4 flex justify-end gap-2">
-            <button onClick={() => setConfirm(null)} className="rounded px-3 py-2 text-sm hover:bg-black/5">
-              Cancel
-            </button>
-            <button
-              onClick={confirmDelete}
-              disabled={remove.isPending}
-              className="rounded bg-red-700 px-3 py-2 text-sm text-white disabled:opacity-50"
-            >
-              Delete
-            </button>
-          </div>
-        </Modal>
+        <ConfirmDialog
+          title="Delete account"
+          message={`Delete “${confirm.name}”? This cannot be undone.`}
+          busy={remove.isPending}
+          error={deleteError}
+          onConfirm={confirmDelete}
+          onCancel={() => setConfirm(null)}
+        />
       )}
     </section>
   );

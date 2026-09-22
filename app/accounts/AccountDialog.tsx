@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { ErrorBanner } from '../../components/ErrorBanner';
+import { FormField } from '../../components/FormField';
 import { Modal } from '../../components/Modal';
 import { ApiError } from '../../lib/api/client';
 import type { CreateAccountInput } from '../../lib/api/accounts';
@@ -43,72 +45,35 @@ export function AccountDialog({
   return (
     <Modal title={account ? 'Edit account' : 'New account'} onClose={onClose}>
       <form onSubmit={save} className="space-y-4">
-        {error && !error.fieldErrors && (
-          <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
-            {error.message}
-          </p>
-        )}
+        {error && !error.fieldErrors && <ErrorBanner error={error} />}
 
-        <div className="text-sm">
-          <label htmlFor="account-name" className="mb-1 block font-medium">
-            Name
-          </label>
-          <input
-            id="account-name"
-            name="name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            aria-invalid={Boolean(fieldError('name'))}
-            aria-describedby={fieldError('name') ? 'account-name-error' : undefined}
-            className="w-full rounded border border-black/20 px-3 py-2 dark:border-white/20"
-          />
-          {fieldError('name') && (
-            <p id="account-name-error" role="alert" className="mt-1 text-red-700">
-              {fieldError('name')}
-            </p>
-          )}
-        </div>
+        <FormField id="account-name" label="Name" error={fieldError('name')}>
+          <input name="name" value={name} onChange={(e) => setName(e.target.value)} />
+        </FormField>
 
-        <div className="text-sm">
-          <label htmlFor="account-type" className="mb-1 block font-medium">
-            Type
-          </label>
-          <select
-            id="account-type"
-            name="type"
-            value={type}
-            onChange={(e) => setType(e.target.value as AccountType)}
-            className="w-full rounded border border-black/20 px-3 py-2 dark:border-white/20"
-          >
+        <FormField id="account-type" label="Type" error={fieldError('type')}>
+          <select name="type" value={type} onChange={(e) => setType(e.target.value as AccountType)}>
             {TYPES.map((t) => (
               <option key={t} value={t}>
                 {t.replace('_', ' ')}
               </option>
             ))}
           </select>
-        </div>
+        </FormField>
 
-        <div className="text-sm">
-          <label htmlFor="account-opening" className="mb-1 block font-medium">
-            Opening balance
-          </label>
+        <FormField
+          id="account-opening"
+          label="Opening balance"
+          error={fieldError('openingBalance')}
+        >
           <input
-            id="account-opening"
             name="openingBalance"
             type="number"
             step="0.01"
             value={openingBalance}
             onChange={(e) => setOpeningBalance(e.target.value)}
-            aria-invalid={Boolean(fieldError('openingBalance'))}
-            aria-describedby={fieldError('openingBalance') ? 'account-opening-error' : undefined}
-            className="w-full rounded border border-black/20 px-3 py-2 dark:border-white/20"
           />
-          {fieldError('openingBalance') && (
-            <p id="account-opening-error" role="alert" className="mt-1 text-red-700">
-              {fieldError('openingBalance')}
-            </p>
-          )}
-        </div>
+        </FormField>
 
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" onClick={onClose} className="rounded px-3 py-2 text-sm hover:bg-black/5">
