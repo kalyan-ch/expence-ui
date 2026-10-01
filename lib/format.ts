@@ -25,3 +25,16 @@ export function formatDate(iso: string): string {
   const [year, month, day] = iso.slice(0, 10).split('-').map(Number);
   return dateFormatter.format(new Date(year, month - 1, day));
 }
+
+const monthFormatter = new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'short' });
+
+/** `YYYY-MM` as "Sep 2026". */
+export function formatMonth(yearMonth: string): string {
+  const [year, month] = yearMonth.split('-').map(Number);
+  return monthFormatter.format(new Date(year, month - 1, 1));
+}
+
+/** Local calendar date as ISO `YYYY-MM-DD`. Never `toISOString()`: that is the UTC date. */
+export function isoDate(date: Date): string {
+  return date.toLocaleDateString('en-CA');
+}

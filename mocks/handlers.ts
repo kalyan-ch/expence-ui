@@ -31,6 +31,25 @@ export const summaryFixture = {
   savings: 58,
 };
 
+export const monthlyFixture = [
+  { month: '2026-08', income: 0, expenses: 0 },
+  { month: '2026-09', income: 100, expenses: 42 },
+];
+
+export const byCategoryFixture = [
+  { categoryId: 'c1', categoryName: 'Groceries', total: 30 },
+  { categoryId: 'c3', categoryName: 'Pets', total: 12 },
+];
+
+/** Mirrors the API: from/to (and kind on by-category) are required, else 400. */
+function missingParams(request: Request, names: string[]) {
+  const params = new URL(request.url).searchParams;
+  const missing = names.filter((n) => !params.get(n));
+  return missing.length
+    ? HttpResponse.json({ message: `Missing parameter: ${missing.join(', ')}` }, { status: 400 })
+    : null;
+}
+
 export const handlers = [
   http.get('*/api/transactions', () =>
     HttpResponse.json({
@@ -47,6 +66,12 @@ export const handlers = [
     return HttpResponse.json(kind ? categoriesFixture.filter((c) => c.kind === kind) : categoriesFixture);
   }),
   http.get('*/api/reports/summary', () => HttpResponse.json(summaryFixture)),
+  http.get('*/api/reports/monthly', ({ request }) =>
+    missingParams(request, ['from', 'to']) ?? HttpResponse.json(monthlyFixture),
+  ),
+  http.get('*/api/reports/by-category', ({ request }) =>
+    missingParams(request, ['from', 'to', 'kind']) ?? HttpResponse.json(byCategoryFixture),
+  ),
   http.post('*/api/transactions', async ({ request }) => {
     const body = (await request.json()) as Record<string, unknown>;
     return HttpResponse.json({ ...txFixture, id: 't2', ...body }, { status: 201 });

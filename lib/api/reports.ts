@@ -14,9 +14,8 @@ export function getMonthly(from: string, to: string): Promise<MonthlyPoint[]> {
 export function getByCategory(
   from: string,
   to: string,
-  kind?: CategoryKind,
+  kind: CategoryKind,
 ): Promise<CategoryTotal[]> {
-  const qs = new URLSearchParams({ from, to });
-  if (kind) qs.set('kind', kind);
+  const qs = new URLSearchParams({ from, to, kind });
   return apiFetch<CategoryTotal[]>(`/reports/by-category?${qs.toString()}`);
 }

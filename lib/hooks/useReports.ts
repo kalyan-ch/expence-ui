@@ -15,9 +15,9 @@ export function useMonthly(from: string, to: string) {
   });
 }
 
-export function useByCategory(from: string, to: string, kind?: CategoryKind) {
+export function useByCategory(from: string, to: string, kind: CategoryKind) {
   return useQuery({
-    queryKey: ['reports', 'by-category', from, to, kind ?? null],
+    queryKey: ['reports', 'by-category', from, to, kind],
     queryFn: () => getByCategory(from, to, kind),
   });
 }
