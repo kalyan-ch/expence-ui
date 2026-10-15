@@ -11,6 +11,7 @@ import { formatDate, isoDate } from '../lib/format';
 import { useByCategory, useSummary } from '../lib/hooks/useReports';
 import { useToday } from '../lib/hooks/useToday';
 import { useTransactions } from '../lib/hooks/useTransactions';
+import { ExpenditureTrend } from './ExpenditureTrend';
 
 export default function DashboardPage() {
   const today = useToday();
@@ -46,6 +47,8 @@ function Dashboard({ thisMonth }: { thisMonth: string }) {
           </FormField>
         }
       />
+
+      <ExpenditureTrend thisMonth={thisMonth} />
 
       {error && <ErrorBanner error={error} />}
 

@@ -8,6 +8,15 @@ export function useAccounts() {
   return useQuery({ queryKey: ['accounts'], queryFn: listAccounts });
 }
 
+/** The accounts bills are paid from and paychecks land in. */
+export function usePaymentAccounts() {
+  return useQuery({
+    queryKey: ['accounts'],
+    queryFn: listAccounts,
+    select: (accounts) => accounts.filter((a) => a.paymentAccount),
+  });
+}
+
 export function useCreateAccount() {
   const qc = useQueryClient();
   return useMutation({

@@ -23,6 +23,7 @@ export function AccountDialog({
   const [name, setName] = useState(account?.name ?? '');
   const [type, setType] = useState<AccountType>(account?.type ?? 'CHECKING');
   const [openingBalance, setOpeningBalance] = useState(String(account?.openingBalance ?? 0));
+  const [paymentAccount, setPaymentAccount] = useState(account?.paymentAccount ?? false);
   const [error, setError] = useState<ApiError | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -31,7 +32,7 @@ export function AccountDialog({
     setSaving(true);
     setError(null);
     try {
-      await onSubmit({ name, type, openingBalance: Number(openingBalance) });
+      await onSubmit({ name, type, openingBalance: Number(openingBalance), paymentAccount });
       onClose();
     } catch (err) {
       setError(err instanceof ApiError ? err : new ApiError(0, 'Something went wrong'));
@@ -74,6 +75,11 @@ export function AccountDialog({
             onChange={(e) => setOpeningBalance(e.target.value)}
           />
         </FormField>
+
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={paymentAccount} onChange={(e) => setPaymentAccount(e.target.checked)} />
+          Pay bills from this account
+        </label>
 
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" onClick={onClose} className="rounded px-3 py-2 text-sm hover:bg-black/5">

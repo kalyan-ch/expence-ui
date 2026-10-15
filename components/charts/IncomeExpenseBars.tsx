@@ -1,19 +1,13 @@
 'use client';
 
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { formatMoney, formatMonth } from '../../lib/format';
+import { formatMoney, formatMoneyCompact, formatMonth } from '../../lib/format';
 import type { MonthlyPoint } from '../../lib/types';
 
 const SERIES = [
   { key: 'income', label: 'Income', color: 'var(--series-1)' },
   { key: 'expenses', label: 'Expenses', color: 'var(--series-2)' },
 ] as const;
-
-const compactMoney = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
-  notation: 'compact',
-});
 
 /** Grouped monthly bars on one money axis. The sr-only table is the non-visual view. */
 export function IncomeExpenseBars({ title, data }: { title: string; data: MonthlyPoint[] }) {
@@ -39,7 +33,7 @@ export function IncomeExpenseBars({ title, data }: { title: string; data: Monthl
             tickLine={false}
           />
           <YAxis
-            tickFormatter={(v: number) => compactMoney.format(v)}
+            tickFormatter={formatMoneyCompact}
             tick={{ fill: 'var(--chart-muted)', fontSize: 12 }}
             axisLine={false}
             tickLine={false}

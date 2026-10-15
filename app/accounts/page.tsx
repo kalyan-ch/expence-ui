@@ -67,6 +67,7 @@ export default function AccountsPage() {
             <tr>
               <th className="py-2">Name</th>
               <th className="py-2">Type</th>
+              <th className="py-2">Pays bills</th>
               <th className="py-2 text-right">Opening balance</th>
               <th className="py-2 text-right">Current balance</th>
               <th className="py-2" />
@@ -77,6 +78,7 @@ export default function AccountsPage() {
               <tr key={a.id} className="border-b border-black/5 dark:border-white/10">
                 <td className="py-2">{a.name}</td>
                 <td className="py-2">{a.type.replace('_', ' ')}</td>
+                <td className="py-2">{a.paymentAccount ? 'Yes' : '—'}</td>
                 <td className="py-2 text-right">
                   <MoneyText value={a.openingBalance} />
                 </td>

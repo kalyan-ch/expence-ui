@@ -93,4 +93,16 @@ describe('DashboardPage', () => {
     expect(within(recent).getByRole('row', { name: /Tx 0/ })).toHaveTextContent('($42.00)');
     expect(seen[0].get('size')).toBe('10');
   });
+
+  it('labels each plan by its spending month and stops at this month', async () => {
+    vi.setSystemTime(new Date(2026, 9, 14));
+    renderPage();
+
+    const latest = await screen.findByRole('group', { name: "Sep '26 expenditure" });
+    expect(within(latest).getByText('$3,633.28')).toBeInTheDocument();
+    expect(within(screen.getByRole('group', { name: 'Highest month' })).getByText("Aug '26")).toBeInTheDocument();
+    // November's plan (opened early in Bills) is not drawn yet.
+    expect(screen.queryByText('$777.00')).not.toBeInTheDocument();
+  });
 });
+

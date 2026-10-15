@@ -5,6 +5,7 @@ export interface CreateAccountInput {
   name: string;
   type: AccountType;
   openingBalance: number;
+  paymentAccount?: boolean;
 }
 export type UpdateAccountInput = CreateAccountInput;
 

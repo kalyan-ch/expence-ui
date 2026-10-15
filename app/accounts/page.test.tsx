@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
@@ -57,6 +57,26 @@ describe('AccountsPage', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(await screen.findByRole('row', { name: /Savings/ })).toBeInTheDocument();
+  });
+
+  it('a new account can be marked as a payment account', async () => {
+    let posted: unknown;
+    server.use(
+      http.post('*/api/accounts', async ({ request }) => {
+        posted = await request.json();
+        return HttpResponse.json({}, { status: 201 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    expect(within(await screen.findByRole('row', { name: /Checking/ })).getByText('Yes')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'New account' }));
+    await user.type(screen.getByLabelText('Name'), 'DCU');
+    await user.click(screen.getByLabelText('Pay bills from this account'));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(posted).toEqual({ name: 'DCU', type: 'CHECKING', openingBalance: 0, paymentAccount: true }));
   });
 
   it('renders a 400 field error under the name input', async () => {
