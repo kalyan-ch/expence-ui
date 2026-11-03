@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
@@ -82,7 +82,35 @@ describe('BillsPage', () => {
       billingDay: 10,
       status: 'PAID',
       paidOn: '2026-10-13',
+      inExpenditure: true,
     });
+  });
+
+  it('unticking In expenditure saves just that choice; paychecks have no such box', async () => {
+    const seen = recordItemPuts();
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(within(await billRow('Amex Card')).getByRole('checkbox', { name: 'Amex Card in expenditure' }));
+
+    await waitFor(() => expect(seen).toHaveLength(1));
+    expect(seen[0].body).toMatchObject({ name: 'Amex Card', status: 'PENDING', inExpenditure: false });
+    expect(screen.queryByRole('checkbox', { name: 'Salary 1 in expenditure' })).not.toBeInTheDocument();
+  });
+
+  it('the due date can be changed or cleared at any time, for this month only', async () => {
+    const seen = recordItemPuts();
+    renderPage();
+
+    const due = within(await billRow('Car')).getByLabelText('Car due date');
+    expect(due).toHaveValue('2026-10-10');
+    fireEvent.change(due, { target: { value: '2026-10-24' } });
+    await waitFor(() => expect(seen).toHaveLength(1));
+    expect(seen[0].body).toMatchObject({ name: 'Car', billingDay: 24 });
+
+    fireEvent.change(due, { target: { value: '' } });
+    await waitFor(() => expect(seen).toHaveLength(2));
+    expect(seen[1].body.billingDay).toBeNull();
   });
 
   it("a bill's account dropdown lists payment accounts and keeps its current one", async () => {
@@ -93,7 +121,7 @@ describe('BillsPage', () => {
 
   it('a bill with no amount cannot be ticked paid', async () => {
     renderPage();
-    expect(within(await billRow('Discover Card')).getByRole('checkbox')).toBeDisabled();
+    expect(within(await billRow('Discover Card')).getByRole('checkbox', { name: 'Discover Card paid' })).toBeDisabled();
   });
 
   it('editing an amount inline saves on Enter and shows the new totals', async () => {

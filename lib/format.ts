@@ -1,4 +1,4 @@
-import type { ItemKind } from './types';
+import type { ItemFrequency, ItemKind, RecurringItem } from './types';
 
 const moneyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -79,4 +79,18 @@ const shortDateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', da
 export function formatShortDate(iso: string): string {
   const [year, month, day] = iso.slice(0, 10).split('-').map(Number);
   return shortDateFormatter.format(new Date(year, month - 1, day));
+}
+
+export const FREQUENCY_LABEL: Record<ItemFrequency, string> = {
+  MONTHLY: 'Monthly',
+  TWICE_MONTHLY: 'Twice a month',
+  BIWEEKLY: 'Every 2 weeks',
+  WEEKLY: 'Weekly',
+};
+
+/** When a recurring item lands: "Day 1", "Days 15 & 31", "Every 2 weeks from Oct 2". */
+export function formatSchedule(r: Pick<RecurringItem, 'frequency' | 'billingDay' | 'secondDay' | 'anchorDate'>): string {
+  if (r.frequency === 'TWICE_MONTHLY') return `Days ${r.billingDay} & ${r.secondDay}`;
+  if (r.anchorDate) return `${FREQUENCY_LABEL[r.frequency]} from ${formatShortDate(r.anchorDate)}`;
+  return r.billingDay ? `Day ${r.billingDay}` : '—';
 }

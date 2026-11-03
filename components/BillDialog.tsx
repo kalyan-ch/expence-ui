@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { ApiError } from '../lib/api/client';
-import { KIND_LABEL } from '../lib/format';
-import type { Account, ItemKind } from '../lib/types';
+import { FREQUENCY_LABEL, KIND_LABEL } from '../lib/format';
+import type { Account, ItemFrequency, ItemKind } from '../lib/types';
 import { ErrorBanner } from './ErrorBanner';
 import { FormField } from './FormField';
 import { Modal } from './Modal';
@@ -15,19 +15,28 @@ export interface BillValues {
   accountId: string;
   amount: number | null;
   billingDay: number | null;
+  /** Recurring items only (`schedule`); a month row is always on one day. */
+  frequency?: ItemFrequency;
+  secondDay?: number | null;
+  anchorDate?: string | null;
 }
 
 const KINDS: ItemKind[] = ['EXPENSE', 'CARD_PAYMENT', 'SAVINGS', 'INCOME'];
+const FREQUENCIES = Object.keys(FREQUENCY_LABEL) as ItemFrequency[];
+const toText = (n: number | null | undefined) => (n == null ? '' : String(n));
+const toNumber = (s: string) => (s === '' ? null : Number(s));
 
 /**
  * Add or edit a bill or paycheck. Amount and billing day may be left blank.
  * `amountField` is the API's name for the amount, so its 400 error lands under the input.
+ * `schedule` adds how often it repeats: one or two fixed days, or every 1 or 2 weeks from a payday.
  */
 export function BillDialog({
   title,
   bill,
   accounts,
   amountField = 'amount',
+  schedule,
   onSubmit,
   onClose,
 }: {
@@ -35,6 +44,7 @@ export function BillDialog({
   bill?: BillValues;
   accounts: Account[];
   amountField?: string;
+  schedule?: boolean;
   onSubmit: (values: BillValues) => Promise<unknown>;
   onClose: () => void;
 }) {
@@ -42,7 +52,11 @@ export function BillDialog({
   const [kind, setKind] = useState<ItemKind>(bill?.kind ?? 'EXPENSE');
   const [accountId, setAccountId] = useState(bill?.accountId ?? accounts[0]?.id ?? '');
   const [amount, setAmount] = useState(bill?.amount == null ? '' : String(bill.amount));
-  const [day, setDay] = useState(bill?.billingDay == null ? '' : String(bill.billingDay));
+  const [day, setDay] = useState(toText(bill?.billingDay));
+  const [frequency, setFrequency] = useState<ItemFrequency>(bill?.frequency ?? 'MONTHLY');
+  const [secondDay, setSecondDay] = useState(toText(bill?.secondDay));
+  const [anchorDate, setAnchorDate] = useState(bill?.anchorDate ?? '');
+  const fixedDays = frequency === 'MONTHLY' || frequency === 'TWICE_MONTHLY';
   const [error, setError] = useState<ApiError | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -55,8 +69,13 @@ export function BillDialog({
         name,
         kind,
         accountId,
-        amount: amount === '' ? null : Number(amount),
-        billingDay: day === '' ? null : Number(day),
+        amount: toNumber(amount),
+        billingDay: fixedDays ? toNumber(day) : null,
+        ...(schedule && {
+          frequency,
+          secondDay: frequency === 'TWICE_MONTHLY' ? toNumber(secondDay) : null,
+          anchorDate: fixedDays ? null : anchorDate || null,
+        }),
       });
       onClose();
     } catch (err) {
@@ -111,9 +130,37 @@ export function BillDialog({
           <input type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} />
         </FormField>
 
-        <FormField id="bill-day" label="Billing day (1–31, optional)" error={fieldError('billingDay')}>
-          <input type="number" min="1" max="31" value={day} onChange={(e) => setDay(e.target.value)} />
-        </FormField>
+        {schedule && (
+          <FormField id="bill-frequency" label="How often" error={fieldError('frequency')}>
+            <select value={frequency} onChange={(e) => setFrequency(e.target.value as ItemFrequency)}>
+              {FREQUENCIES.map((f) => (
+                <option key={f} value={f}>
+                  {FREQUENCY_LABEL[f]}
+                </option>
+              ))}
+            </select>
+          </FormField>
+        )}
+
+        {fixedDays ? (
+          <FormField
+            id="bill-day"
+            label={frequency === 'TWICE_MONTHLY' ? 'First day (1–31)' : 'Billing day (1–31, optional)'}
+            error={fieldError('billingDay')}
+          >
+            <input type="number" min="1" max="31" value={day} onChange={(e) => setDay(e.target.value)} />
+          </FormField>
+        ) : (
+          <FormField id="bill-anchor" label="A recent payday (the rest are counted from it)" error={fieldError('anchorDate')}>
+            <input type="date" value={anchorDate} onChange={(e) => setAnchorDate(e.target.value)} />
+          </FormField>
+        )}
+
+        {frequency === 'TWICE_MONTHLY' && (
+          <FormField id="bill-second-day" label="Second day (1–31)" error={fieldError('secondDay')}>
+            <input type="number" min="1" max="31" value={secondDay} onChange={(e) => setSecondDay(e.target.value)} />
+          </FormField>
+        )}
 
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" onClick={onClose} className="rounded px-3 py-2 text-sm hover:bg-black/5">

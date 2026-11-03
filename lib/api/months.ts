@@ -10,6 +10,8 @@ export interface MonthItemInput {
   billingDay: number | null;
   status: ItemStatus;
   paidOn: string | null;
+  /** Left out: unchanged on edit, the kind's default on add. */
+  inExpenditure?: boolean;
 }
 
 export function listMonths(): Promise<MonthSummary[]> {

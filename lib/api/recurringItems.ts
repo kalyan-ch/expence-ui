@@ -1,5 +1,5 @@
 import { apiFetch } from './client';
-import type { ItemKind, RecurringItem } from '../types';
+import type { ItemFrequency, ItemKind, RecurringItem } from '../types';
 
 export interface RecurringItemInput {
   name: string;
@@ -9,6 +9,12 @@ export interface RecurringItemInput {
   billingDay: number | null;
   sortOrder: number;
   active: boolean;
+  /** Left out: unchanged on edit, MONTHLY on create. */
+  frequency?: ItemFrequency;
+  secondDay?: number | null;
+  anchorDate?: string | null;
+  /** Left out: unchanged on edit, the kind's default on create. */
+  inExpenditure?: boolean;
 }
 
 export function listRecurringItems(): Promise<RecurringItem[]> {

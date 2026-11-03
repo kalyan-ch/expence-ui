@@ -5,8 +5,8 @@ import { Nav } from './Nav';
 const nav = vi.hoisted(() => ({ path: '/' }));
 vi.mock('next/navigation', () => ({ usePathname: () => nav.path }));
 
-function current() {
-  return screen.queryAllByRole('link').filter((l) => l.getAttribute('aria-current') === 'page').map((l) => l.textContent);
+function current(value = 'page') {
+  return screen.queryAllByRole('link').filter((l) => l.getAttribute('aria-current') === value).map((l) => l.textContent);
 }
 
 describe('Nav', () => {
@@ -20,11 +20,17 @@ describe('Nav', () => {
 
   it.each([
     ['/bills', 'Bills'],
-    ['/recurring', 'Bills'],
     ['/accounts', 'Accounts'],
   ])('highlights the item for %s', (path, label) => {
     nav.path = path;
     render(<Nav />);
     expect(current()).toEqual([label]);
+  });
+
+  it.each(['/recurring', '/bills/setup'])('on %s, Bills is marked as the section, not the current page', (path) => {
+    nav.path = path;
+    render(<Nav />);
+    expect(current()).toEqual([]);
+    expect(current('true')).toEqual(['Bills']);
   });
 });

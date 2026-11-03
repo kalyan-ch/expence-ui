@@ -42,6 +42,11 @@ describe('RecurringItemsPage', () => {
     expect(rows[2]).toHaveTextContent(/Car.*DCU/);
   });
 
+  it('links back to Bills above the title', async () => {
+    renderPage();
+    expect(await screen.findByRole('link', { name: /Bills/ })).toHaveAttribute('href', '/bills');
+  });
+
   it('unticking Active retires the bill', async () => {
     const seen = recordPuts();
     const user = userEvent.setup();
@@ -84,9 +89,43 @@ describe('RecurringItemsPage', () => {
 
     await waitFor(() =>
       expect(seen).toEqual([
-        { name: 'Freedom Card', kind: 'CARD_PAYMENT', accountId: 'a1', defaultAmount: null, billingDay: 22, sortOrder: 2, active: true },
+        {
+          name: 'Freedom Card',
+          kind: 'CARD_PAYMENT',
+          accountId: 'a1',
+          defaultAmount: null,
+          billingDay: 22,
+          frequency: 'MONTHLY',
+          secondDay: null,
+          anchorDate: null,
+          sortOrder: 2,
+          active: true,
+        },
       ]),
     );
+  });
+
+  it('clicking a schedule opens the edit dialog, where the frequency and days can change', async () => {
+    const seen = recordPuts();
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole('button', { name: 'Edit Rent schedule' }));
+    await user.selectOptions(screen.getByLabelText('How often'), 'TWICE_MONTHLY');
+    await user.type(screen.getByLabelText(/Second day/), '15');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(seen).toHaveLength(1));
+    expect(seen[0].body).toMatchObject({ frequency: 'TWICE_MONTHLY', billingDay: 1, secondDay: 15, anchorDate: null });
+
+    await user.click(screen.getByRole('button', { name: 'Edit Rent schedule' }));
+    await user.selectOptions(screen.getByLabelText('How often'), 'BIWEEKLY');
+    expect(screen.queryByLabelText(/Billing day/)).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText(/A recent payday/), '2026-10-02');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(seen).toHaveLength(2));
+    expect(seen[1].body).toMatchObject({ frequency: 'BIWEEKLY', billingDay: null, secondDay: null, anchorDate: '2026-10-02' });
   });
 
   it('the account dropdown offers only payment accounts', async () => {

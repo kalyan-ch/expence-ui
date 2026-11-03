@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useState } from 'react';
 import { BillDialog, type BillValues } from '../../components/BillDialog';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -10,7 +9,7 @@ import { MoneyText } from '../../components/MoneyText';
 import { PageHeader } from '../../components/PageHeader';
 import { ApiError } from '../../lib/api/client';
 import type { RecurringItemInput } from '../../lib/api/recurringItems';
-import { KIND_LABEL } from '../../lib/format';
+import { formatSchedule, KIND_LABEL } from '../../lib/format';
 import { usePaymentAccounts } from '../../lib/hooks/useAccounts';
 import {
   useCreateRecurringItem,
@@ -21,8 +20,8 @@ import {
 import type { RecurringItem } from '../../lib/types';
 
 function toInput(r: RecurringItem, change: Partial<RecurringItemInput> = {}): RecurringItemInput {
-  const { name, kind, accountId, defaultAmount, billingDay, sortOrder, active } = r;
-  return { name, kind, accountId, defaultAmount, billingDay, sortOrder, active, ...change };
+  const { name, kind, accountId, defaultAmount, billingDay, sortOrder, active, frequency, secondDay, anchorDate, inExpenditure } = r;
+  return { name, kind, accountId, defaultAmount, billingDay, sortOrder, active, frequency, secondDay, anchorDate, inExpenditure, ...change };
 }
 
 /** The template every new month copies. Changes here never touch months already started. */
@@ -82,6 +81,7 @@ export default function RecurringItemsPage() {
     <section>
       <PageHeader
         title="Recurring bills"
+        back={{ href: '/bills', label: 'Bills' }}
         action={
           <button
             onClick={() => setDialog({})}
@@ -92,10 +92,7 @@ export default function RecurringItemsPage() {
         }
       />
       <p className="mb-4 text-sm opacity-70">
-        Every new month copies these. Editing one never changes a month already started.{' '}
-        <Link href="/bills" className="underline">
-          Back to bills
-        </Link>
+        Every new month copies these. Editing one never changes a month already started.
       </p>
 
       {(error ?? (!confirm && actionError)) && (
@@ -118,7 +115,8 @@ export default function RecurringItemsPage() {
                 <th className="py-2">Kind</th>
                 <th className="py-2">Account</th>
                 <th className="py-2 text-right">Default amount</th>
-                <th className="py-2 text-right">Day</th>
+                <th className="py-2 pl-4">Schedule</th>
+                <th className="py-2 pl-4">In expenditure</th>
                 <th className="py-2 pl-4">Active</th>
                 <th className="py-2" />
               </tr>
@@ -143,7 +141,21 @@ export default function RecurringItemsPage() {
                   <td className="py-2">{KIND_LABEL[r.kind]}</td>
                   <td className="py-2">{r.accountName}</td>
                   <td className="py-2 text-right">{r.defaultAmount == null ? '—' : <MoneyText value={r.defaultAmount} />}</td>
-                  <td className="py-2 text-right tabular-nums">{r.billingDay ?? '—'}</td>
+                  <td className="py-2 pl-4 tabular-nums">
+                    <button onClick={() => setDialog({ item: r })} aria-label={`Edit ${r.name} schedule`} className="hover:underline">
+                      {formatSchedule(r)}
+                    </button>
+                  </td>
+                  <td className="py-2 pl-4">
+                    {r.kind !== 'INCOME' && (
+                      <input
+                        type="checkbox"
+                        checked={r.inExpenditure}
+                        aria-label={`${r.name} in expenditure`}
+                        onChange={(e) => run(update.mutateAsync({ id: r.id, body: toInput(r, { inExpenditure: e.target.checked }) }))}
+                      />
+                    )}
+                  </td>
                   <td className="py-2 pl-4">
                     <input
                       type="checkbox"
@@ -180,6 +192,7 @@ export default function RecurringItemsPage() {
           bill={dialog.item && { ...dialog.item, amount: dialog.item.defaultAmount }}
           accounts={accounts.data ?? []}
           amountField="defaultAmount"
+          schedule
           onClose={() => setDialog(null)}
           onSubmit={submit}
         />

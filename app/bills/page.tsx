@@ -7,11 +7,13 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { InlineAmount } from '../../components/InlineAmount';
+import { KIND_ORDER, KIND_TONE, KindBadge } from '../../components/KindBadge';
 import { MoneyText } from '../../components/MoneyText';
 import { ApiError } from '../../lib/api/client';
 import type { MonthItemInput } from '../../lib/api/months';
-import { formatMonth, formatShortDate, isoDate, KIND_LABEL, shiftMonth } from '../../lib/format';
+import { formatMonth, formatShortDate, isoDate, shiftMonth } from '../../lib/format';
 import { usePaymentAccounts } from '../../lib/hooks/useAccounts';
+import { useRecurringItems } from '../../lib/hooks/useRecurringItems';
 import {
   useAddMonthItem,
   useDeleteMonthItem,
@@ -22,9 +24,34 @@ import {
 import { useToday } from '../../lib/hooks/useToday';
 import type { Account, Month, MonthItem } from '../../lib/types';
 
+/**
+ * Opening a month copies the recurring bills into it once, so the month is not fetched
+ * until there are accounts and bills to copy; until then this points at the setup flow.
+ */
 export default function BillsPage() {
   const today = useToday();
-  return today ? <Bills today={today} /> : <h1 className="text-2xl font-semibold">Bills</h1>;
+  const accounts = usePaymentAccounts();
+  const recurring = useRecurringItems();
+  const title = <h1 className="text-2xl font-semibold">Bills</h1>;
+
+  if (!today || accounts.isPending || recurring.isPending) return title;
+  const error = accounts.error ?? recurring.error;
+  if (error) return <section className="space-y-6">{title}<ErrorBanner error={error} /></section>;
+  if (!accounts.data?.length || !recurring.data?.some((r) => r.active))
+    return (
+      <section className="space-y-6">
+        {title}
+        <EmptyState
+          message="Your bills aren't set up yet. "
+          action={
+            <Link href="/bills/setup" className="underline">
+              Set up accounts, bills and balances
+            </Link>
+          }
+        />
+      </section>
+    );
+  return <Bills today={today} />;
 }
 
 /** Due date in the plan month; a day past a short month's end falls on its last day. */
@@ -47,8 +74,8 @@ function statusText(b: MonthItem, month: string, today: string) {
 }
 
 function toInput(b: MonthItem, change: Partial<MonthItemInput> = {}): MonthItemInput {
-  const { name, kind, accountId, amount, billingDay, status, paidOn } = b;
-  return { name, kind, accountId, amount, billingDay, status, paidOn, ...change };
+  const { name, kind, accountId, amount, billingDay, status, paidOn, inExpenditure } = b;
+  return { name, kind, accountId, amount, billingDay, status, paidOn, inExpenditure, ...change };
 }
 
 function Bills({ today }: { today: string }) {
@@ -143,6 +170,8 @@ function Bills({ today }: { today: string }) {
             paidLabel="paid"
             onToggle={(b, paid) => run(edit(b, { status: paid ? 'PAID' : 'PENDING', paidOn: paid ? today : null }))}
             onAccount={(b, accountId) => run(edit(b, { accountId }))}
+            onExpenditure={(b, inExpenditure) => run(edit(b, { inExpenditure }))}
+            onDay={(b, billingDay) => run(edit(b, { billingDay }))}
             onAmount={(b, amount) => edit(b, amount == null ? { amount, status: 'PENDING', paidOn: null } : { amount })}
             onDelete={askRemove}
           />
@@ -150,7 +179,7 @@ function Bills({ today }: { today: string }) {
           <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             {[
               { label: 'Total', value: data.total, note: 'all bills' },
-              { label: 'Expenditure', value: data.expenditure, note: 'total minus savings' },
+              { label: 'Expenditure', value: data.expenditure, note: 'bills ticked In expenditure' },
               { label: 'Paid', value: data.total - data.unpaidTotal, note: `${bills.filter(isPaid).length} bills` },
               { label: 'Still due', value: data.unpaidTotal, note: `${data.unpaidCount} bills` },
             ].map((t) => (
@@ -178,6 +207,8 @@ function Bills({ today }: { today: string }) {
                 paidLabel="received"
                 onToggle={(b, paid) => run(edit(b, { status: paid ? 'PAID' : 'PENDING', paidOn: paid ? today : null }))}
                 onAccount={(b, accountId) => run(edit(b, { accountId }))}
+                onExpenditure={(b, inExpenditure) => run(edit(b, { inExpenditure }))}
+                onDay={(b, billingDay) => run(edit(b, { billingDay }))}
                 onAmount={(b, amount) => edit(b, { amount })}
                 onDelete={askRemove}
               />
@@ -259,6 +290,8 @@ function BillTable({
   paidLabel,
   onToggle,
   onAccount,
+  onExpenditure,
+  onDay,
   onAmount,
   onDelete,
 }: {
@@ -270,75 +303,112 @@ function BillTable({
   paidLabel: string;
   onToggle: (b: MonthItem, paid: boolean) => void;
   onAccount: (b: MonthItem, accountId: string) => void;
+  onExpenditure: (b: MonthItem, inExpenditure: boolean) => void;
+  onDay: (b: MonthItem, billingDay: number | null) => void;
   onAmount: (b: MonthItem, amount: number | null) => Promise<unknown>;
   onDelete: (b: MonthItem) => void;
 }) {
+  // Pay never counts toward Expenditure, so the income table has no such column.
+  const showExpenditure = rows.some((b) => b.kind !== 'INCOME');
   return (
     <div className="overflow-x-auto">
       <table aria-label={title} className="w-full text-sm">
         <thead className="border-b border-black/10 text-left dark:border-white/15">
           <tr>
-            <th className="py-2 capitalize">{paidLabel}</th>
+            <th className="border-l-4 border-l-transparent py-2 pl-3 capitalize">{paidLabel}</th>
             <th className="py-2">Due</th>
             <th className="py-2">Name</th>
-            <th className="py-2">Kind</th>
             <th className="py-2">From</th>
             <th className="py-2 text-right">Amount</th>
+            {showExpenditure && <th className="py-2 pl-4 text-center">In expenditure</th>}
             <th className="py-2 pl-4">Status</th>
             <th className="py-2" />
           </tr>
         </thead>
-        <tbody>
-          {rows.map((b) => {
-            const overdue = isOverdue(b, month, today);
-            return (
-              <tr
-                key={b.id}
-                className={`border-b border-black/5 dark:border-white/10 ${isPaid(b) ? 'opacity-60' : ''} ${overdue ? 'bg-red-50 dark:bg-red-950/30' : ''}`}
-              >
-                <td className="py-2">
-                  <input
-                    type="checkbox"
-                    checked={isPaid(b)}
-                    disabled={b.amount == null}
-                    title={b.amount == null ? 'Add an amount first' : undefined}
-                    aria-label={`${b.name} ${paidLabel}`}
-                    onChange={(e) => onToggle(b, e.target.checked)}
-                  />
-                </td>
-                <td className="py-2 tabular-nums">{b.billingDay ? formatShortDate(dueDate(month, b.billingDay)) : '—'}</td>
-                <td className="py-2">{b.name}</td>
-                <td className="py-2 opacity-70">{KIND_LABEL[b.kind]}</td>
-                <td className="py-2">
-                  <select
-                    aria-label={`${b.name} paid from`}
-                    value={b.accountId}
-                    onChange={(e) => onAccount(b, e.target.value)}
-                    className="rounded border border-black/20 bg-transparent px-1 py-0.5 dark:border-white/20"
-                  >
-                    {accounts.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name}
-                      </option>
-                    ))}
-                    {!accounts.some((a) => a.id === b.accountId) && <option value={b.accountId}>{b.accountName}</option>}
-                  </select>
-                </td>
-                <td className="py-2 text-right">
-                  <InlineAmount value={b.amount} label={`${b.name} amount`} onSave={(v) => onAmount(b, v)} />
-                </td>
-                <td className={`py-2 pl-4 ${overdue ? 'font-medium text-red-700 dark:text-red-400' : 'opacity-70'}`}>
-                  {statusText(b, month, today)}
-                </td>
-                <td className="py-2 text-right">
-                  <button onClick={() => onDelete(b)} aria-label={`Remove ${b.name}`} className="px-2 text-red-700 hover:underline">
-                    Remove
-                  </button>
-                </td>
+        {KIND_ORDER.map((kind) => {
+          const group = rows.filter((b) => b.kind === kind);
+          if (!group.length) return null;
+          return (
+            <tbody key={kind}>
+              <tr>
+                <th colSpan={showExpenditure ? 8 : 7} scope="rowgroup" className="pb-1 pt-4 text-left font-normal">
+                  <KindBadge kind={kind} />
+                  <span className="ml-2 text-xs tabular-nums opacity-60">
+                    {group.length} · <MoneyText value={group.reduce((s, b) => s + (b.amount ?? 0), 0)} />
+                  </span>
+                </th>
               </tr>
-            );
-          })}
-        </tbody>
+              {group.map((b) => {
+                const overdue = isOverdue(b, month, today);
+                return (
+                  <tr
+                    key={b.id}
+                    className={`border-b border-black/5 dark:border-white/10 ${isPaid(b) ? 'opacity-60' : ''} ${overdue ? 'bg-red-50 dark:bg-red-950/30' : ''}`}
+                  >
+                    <td className={`border-l-4 py-2 pl-3 ${KIND_TONE[kind].bar}`}>
+                      <input
+                        type="checkbox"
+                        checked={isPaid(b)}
+                        disabled={b.amount == null}
+                        title={b.amount == null ? 'Add an amount first' : undefined}
+                        aria-label={`${b.name} ${paidLabel}`}
+                        onChange={(e) => onToggle(b, e.target.checked)}
+                      />
+                    </td>
+                    <td className="py-2">
+                      <input
+                        type="date"
+                        aria-label={`${b.name} due date`}
+                        min={`${month}-01`}
+                        max={dueDate(month, 31)}
+                        value={b.billingDay ? dueDate(month, b.billingDay) : ''}
+                        onChange={(e) => onDay(b, e.target.value ? Number(e.target.value.slice(8)) : null)}
+                        className="rounded border border-transparent bg-transparent px-1 py-0.5 tabular-nums hover:border-black/20 dark:[color-scheme:dark] dark:hover:border-white/20"
+                      />
+                    </td>
+                    <td className="py-2">{b.name}</td>
+                    <td className="py-2">
+                      <select
+                        aria-label={`${b.name} paid from`}
+                        value={b.accountId}
+                        onChange={(e) => onAccount(b, e.target.value)}
+                        className="rounded border border-black/20 bg-transparent px-1 py-0.5 dark:border-white/20"
+                      >
+                        {accounts.map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {a.name}
+                          </option>
+                        ))}
+                        {!accounts.some((a) => a.id === b.accountId) && <option value={b.accountId}>{b.accountName}</option>}
+                      </select>
+                    </td>
+                    <td className="py-2 text-right">
+                      <InlineAmount value={b.amount} label={`${b.name} amount`} onSave={(v) => onAmount(b, v)} />
+                    </td>
+                    {showExpenditure && (
+                      <td className="py-2 pl-4 text-center">
+                        <input
+                          type="checkbox"
+                          checked={b.inExpenditure}
+                          aria-label={`${b.name} in expenditure`}
+                          onChange={(e) => onExpenditure(b, e.target.checked)}
+                        />
+                      </td>
+                    )}
+                    <td className={`py-2 pl-4 ${overdue ? 'font-medium text-red-700 dark:text-red-400' : 'opacity-70'}`}>
+                      {statusText(b, month, today)}
+                    </td>
+                    <td className="py-2 text-right">
+                      <button onClick={() => onDelete(b)} aria-label={`Remove ${b.name}`} className="px-2 text-red-700 hover:underline">
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          );
+        })}
       </table>
     </div>
   );
