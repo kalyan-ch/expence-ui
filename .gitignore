@@ -42,3 +42,6 @@ next-env.d.ts
 
 ### Superpowers SDD scratch ###
 .superpowers/
+
+# design mockups, kept local
+/docs/mockups/

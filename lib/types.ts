@@ -105,6 +105,8 @@ export interface Transfer {
 
 export type ItemKind = 'INCOME' | 'EXPENSE' | 'CARD_PAYMENT' | 'SAVINGS';
 export type ItemStatus = 'PENDING' | 'PAID';
+/** MONTHLY and TWICE_MONTHLY use fixed days; BIWEEKLY and WEEKLY count from `anchorDate`. */
+export type ItemFrequency = 'MONTHLY' | 'TWICE_MONTHLY' | 'BIWEEKLY' | 'WEEKLY';
 
 /** A bill or paycheck every new month copies. */
 export interface RecurringItem {
@@ -115,7 +117,15 @@ export interface RecurringItem {
   accountName: string;
   /** Null = blank cell, nothing due by default. */
   defaultAmount: number | null;
+  /** Null for BIWEEKLY and WEEKLY, which have no fixed day. */
   billingDay: number | null;
+  frequency: ItemFrequency;
+  /** TWICE_MONTHLY only. */
+  secondDay: number | null;
+  /** BIWEEKLY and WEEKLY only: ISO `YYYY-MM-DD` of any known payday. */
+  anchorDate: string | null;
+  /** Counts toward the month's Expenditure; always false for pay. */
+  inExpenditure: boolean;
   sortOrder: number;
   /** False = retired: kept for history, not copied into new months. */
   active: boolean;
@@ -132,6 +142,7 @@ export interface MonthItem {
   accountName: string;
   amount: number | null;
   billingDay: number | null;
+  inExpenditure: boolean;
   sortOrder: number;
   status: ItemStatus;
   /** ISO `YYYY-MM-DD`; set only when PAID. */

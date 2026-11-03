@@ -17,7 +17,11 @@ function useRecurringMutation<V>(fn: (vars: V) => Promise<unknown>) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: fn,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['recurring-items'] }),
+    // A new item also joins months already opened, so those are refetched too.
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['recurring-items'] });
+      qc.invalidateQueries({ queryKey: ['months'] });
+    },
   });
 }
 

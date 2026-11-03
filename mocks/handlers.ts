@@ -45,16 +45,18 @@ export const byCategoryFixture = [
 const chase = { accountId: 'a1', accountName: 'Chase' };
 const dcu = { accountId: 'a2', accountName: 'DCU' };
 const row = { recurringItemId: 'r', sortOrder: 0, status: 'PENDING' as const, paidOn: null };
+const spend = { inExpenditure: true };
+const monthly = { frequency: 'MONTHLY' as const, secondDay: null, anchorDate: null, inExpenditure: true };
 
 /** The October 2026 sheet: three bills, one blank card, one paycheck. */
 export const monthFixture = {
   month: '2026-10',
   items: [
-    { ...row, ...chase, id: 'i1', name: 'Rent', kind: 'EXPENSE' as const, amount: 2010.82, billingDay: 1 },
-    { ...row, ...dcu, id: 'i2', name: 'Car', kind: 'EXPENSE' as const, amount: 379.81, billingDay: 10 },
-    { ...row, ...dcu, id: 'i3', name: 'Amex Card', kind: 'CARD_PAYMENT' as const, amount: 433.14, billingDay: 27 },
-    { ...row, ...dcu, id: 'i4', name: 'Discover Card', kind: 'CARD_PAYMENT' as const, amount: null, billingDay: 7 },
-    { ...row, ...chase, id: 'i5', name: 'Salary 1', kind: 'INCOME' as const, amount: 1985.72, billingDay: null },
+    { ...row, ...chase, ...spend, id: 'i1', name: 'Rent', kind: 'EXPENSE' as const, amount: 2010.82, billingDay: 1 },
+    { ...row, ...dcu, ...spend, id: 'i2', name: 'Car', kind: 'EXPENSE' as const, amount: 379.81, billingDay: 10 },
+    { ...row, ...dcu, ...spend, id: 'i3', name: 'Amex Card', kind: 'CARD_PAYMENT' as const, amount: 433.14, billingDay: 27 },
+    { ...row, ...dcu, ...spend, id: 'i4', name: 'Discover Card', kind: 'CARD_PAYMENT' as const, amount: null, billingDay: 7 },
+    { ...row, ...chase, inExpenditure: false, id: 'i5', name: 'Salary 1', kind: 'INCOME' as const, amount: 1985.72, billingDay: null },
   ],
   accounts: [
     { ...chase, startingBalance: 2915.91, income: 1985.72, expenses: 2010.82, remaining: 2890.81 },
@@ -67,8 +69,8 @@ export const monthFixture = {
 };
 
 export const recurringFixture = [
-  { ...chase, id: 'r1', name: 'Rent', kind: 'EXPENSE' as const, defaultAmount: 2010.82, billingDay: 1, sortOrder: 0, active: true },
-  { ...dcu, id: 'r2', name: 'Car', kind: 'EXPENSE' as const, defaultAmount: 379.81, billingDay: 10, sortOrder: 1, active: true },
+  { ...chase, ...monthly, id: 'r1', name: 'Rent', kind: 'EXPENSE' as const, defaultAmount: 2010.82, billingDay: 1, sortOrder: 0, active: true },
+  { ...dcu, ...monthly, id: 'r2', name: 'Car', kind: 'EXPENSE' as const, defaultAmount: 379.81, billingDay: 10, sortOrder: 1, active: true },
 ];
 
 export const monthsFixture = [
